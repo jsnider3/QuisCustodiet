@@ -1,42 +1,31 @@
-from bs4 import BeautifulSoup
+from scrapy.selector import HtmlXPathSelector
+from scrapy.spider import BaseSpider
+from scrapy.http import Request
 from sets import Set
 
-import requests
-import sys
+DOMAIN = 'tvtropes.com'
+URL = 'http://%s' % DOMAIN
 
-tvtropes = "http://tvtropes.org"
+class TropesSpider(BaseSpider):
+    name = DOMAIN
+    allowed_domains = [DOMAIN]
+    start_urls = [
+        URL
+    ]
+    crawled = Set([])
 
-ls = Set([])
+    def isValid(self, url):
+      valid = (url not in self.crawled and
+        DOMAIN in url and 'mailto' not in url and
+        '?action' not in url and 'php?' not in url)
+      return valid
 
-def addLinks(links):
-  new = Set([])
-  for link in links:
-    if link not in ls:
-      ls.add(link)
-      print(link)
-      new.add(link)
-  return new
-
-def crawl(url):
-  if url not in ls:
-    links = getLinks(url)
-    cont = addLinks(links)
-    print(len(ls))
-    for link in cont:
-      crawl(cont)
-
-def getLinks(url):
-  r  = requests.get(tvtropes)
-  data = r.text
-  soup = BeautifulSoup(data)
-  links = [link.get('href') for link in soup.find_all('a')]
-  links = [link for link in links if 'mailto' not in link]
-  links = [link for link in links if 'javascript' not in link]
-  links = [link for link in links if '?action' not in link]
-  links = [link for link in links if 'php' not in link or 'pmwiki.php' in link]
-  links = [tvtropes + link if 'http' not in link else link for link in links]
-  links = [link for link in links if tvtropes in link]
-  return links
-
-sys.setrecursionlimit(2000000)
-crawl(tvtropes)
+    def parse(self, response):
+        hxs = HtmlXPathSelector(response)
+        for url in hxs.select('//a/@href').extract():
+            if not url.startswith('http'):
+                url = URL + url
+            if self.isValid(url):
+              print url
+              self.crawled.add(url)
+              yield Request(url, callback=self.parse)
