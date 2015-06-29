@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
 '''
   @author: Josh Snider
+  To run, use `scrapy runspider crawler.py`.
 '''
 from scrapy.selector import HtmlXPathSelector
-from scrapy.spider import BaseSpider
+from scrapy.spiders import Spider
 from scrapy.http import Request
 from sets import Set
 
 DOMAIN = 'tvtropes.com'
 URL = 'http://' + DOMAIN
 
-class TropesSpider(BaseSpider):
+class TropesSpider(Spider):
     name = DOMAIN
     allowed_domains = [DOMAIN]
     start_urls = [
