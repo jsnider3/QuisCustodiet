@@ -1,10 +1,14 @@
+#!/usr/bin/env python3
+'''
+  @author: Josh Snider
+'''
 from scrapy.selector import HtmlXPathSelector
 from scrapy.spider import BaseSpider
 from scrapy.http import Request
 from sets import Set
 
 DOMAIN = 'tvtropes.com'
-URL = 'http://%s' % DOMAIN
+URL = 'http://' + DOMAIN
 
 class TropesSpider(BaseSpider):
     name = DOMAIN
