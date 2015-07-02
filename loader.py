@@ -18,9 +18,12 @@ def cache_pages(url_file):
     urls = [url.strip() for url in urls]
     urls = [url for url in urls if url not in cached]
     for url in urls:
-      page  = requests.get(url).text
-      cursor.execute("INSERT INTO pagecache VALUES (?, ?)", (url, page))
-      tropes.commit()
+      try:
+        page  = requests.get(url).text
+        cursor.execute("INSERT INTO pagecache VALUES (?, ?)", (url, page))
+        tropes.commit()
+      except:
+        pass
     tropes.close()
 
 def list_contents():
@@ -51,7 +54,5 @@ def make_db():
 
 if __name__ == '__main__':
   #make_db()
-  #list_pages()
   cache_pages('filteredworks.txt')
-  #list_contents()
-  print("DONE")
+  #print("DONE")
