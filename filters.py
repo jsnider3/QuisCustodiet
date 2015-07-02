@@ -60,6 +60,6 @@ def main():
       if not redirects(url.netloc, url.path):
         print(page)
 
+setup()
 if __name__ == "__main__":
-  setup()
   main()
