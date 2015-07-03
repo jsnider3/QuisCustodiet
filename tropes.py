@@ -50,6 +50,10 @@ class Tropes(object):
         except:
           print('FATAL ERROR: Could not get page %s.' % url, file=sys.stderr)
 
+  def get_multitropes(self, url):
+    #TODO
+    return ""
+
   def get_page(self, url):
     '''Look up the url in the database.
        Fetch and cache it if it's not present.'''
@@ -69,17 +73,24 @@ class Tropes(object):
 
   def get_shoutouts(self, url):
     if self.get_shoutout_page(url):
+      #An example is Warhammer40000.
       page = self.get_shoutout_page(url)
       soup = BeautifulSoup(page)
       soup = soup.find("div", {"id": "wikitext"})
-    elif self.has_multitropes(url):
+    elif self.get_multitropes(url):
+      #Haven't found an example yet.
       pass
     else:
-      pass
+      #An example is MontyPythonsFlyingCircus.
+      page = self.get_page(url)
+      soup = BeautifulSoup(page)
+      items = [item for item in soup.findAll('li') if '/Main/ShoutOut' in str(item)]
+      soup = min(items, key=lambda x: str(x).index('/Main/ShoutOut'))
     links = [link.get('href') for link in soup.find_all('a')]
     links = [link for link in links if link and self.is_trope(link)]
-    print(links)
-    #TODO Beautiful soup.
+    links = [link for link in links if link and filters.is_work(link)]
+    #print(links)
+    return links
 
   def get_shoutout_page(self, url):
     '''Returns if this has a specific shout out page.'''
@@ -119,5 +130,5 @@ class Tropes(object):
 if __name__ == '__main__':
   with Tropes() as tropes:
     tropes.get_shoutouts(
-      'http://tvtropes.org/pmwiki/pmwiki.php/TabletopGame/Warhammer40000')
+      'http://tvtropes.org/pmwiki/pmwiki.php/Series/MontyPythonsFlyingCircus')
     print("DONE")
