@@ -24,13 +24,13 @@ def is_work(url):
   return cat in cats
 
 def redirects(host, path="/"):
-    try:
-        con = httplib.HTTPConnection(host)
-        con.request("HEAD", path)
-        stat = con.getresponse().status
-        return stat == 301 or stat == 302 or stat == 303
-    except:
-        return False
+  try:
+    con = httplib.HTTPConnection(host)
+    con.request("HEAD", path)
+    stat = con.getresponse().status
+    return stat == 301 or stat == 302 or stat == 303
+  except:
+    return False
 
 assert(not redirects("tvtropes.org"))
 assert(not redirects("tvtropes.org", "/asdfsadf"))
