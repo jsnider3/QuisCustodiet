@@ -5,6 +5,7 @@
 
 from bs4 import BeautifulSoup
 import filters
+import re
 import requests
 import sqlite3
 import sys
@@ -19,12 +20,12 @@ class Tropes(object):
   top_url = "tvtropes.org"
   base_url = top_url + "/pmwiki/pmwiki.php/"
 
-  DB = "tropes.db"
   TABLE = "pagecache"
 
-  def __init__(self):
-    self.sql = sqlite3.connect(self.DB)
+  def __init__(self, purge, DB="tropes.db"):
+    self.sql = sqlite3.connect(DB)
     self.c = self.sql.cursor()
+    self.purge = purge
 
   def __enter__(self):
     return self
@@ -50,22 +51,50 @@ class Tropes(object):
         except:
           print('FATAL ERROR: Could not get page %s.' % url, file=sys.stderr)
 
+  def duplicate(self, dest):
+    '''Copy this database to a new location,
+       used if constraints were changed.'''
+    with Tropes(False, dest) as tropes:
+      tropes.make_db()
+      print("made db")
+      stuff = self.list_contents()
+      print("loaded stuff")
+      for (url, contents) in stuff:
+        try:
+          tropes.add_page(url, contents)
+        except:
+          pass
+
   def get_multitropes(self, url):
-    #TODO
-    return ""
+    page = self.get_page(url)
+    soup = BeautifulSoup(page)
+    links = [link.get('href') for link in soup.find_all('a')]
+    links = [link for link in links if link]
+    pattern = re.compile('.*/Tropes[A-Z]To[A-Z].*')
+    items = [link for link in links if pattern.match(str(link))]
+    if items:
+      #TODO Get the one with S.
+      print(items)
+      return self.get_page(items[0])
+    else:
+      return ""
 
   def get_page(self, url):
     '''Look up the url in the database.
        Fetch and cache it if it's not present.'''
+    if top_url not in url:
+      url = top_url + url
+    url = add_schema(url)
     self.c.execute('SELECT contents FROM pagecache WHERE url = ?', (url,))
     results = self.c.fetchall()
     assert(len(results) < 2)
     page = ""
-    if len(results):
+    if len(results) and not self.purge:
       page = results[0][0]
     else:
       try:
-        page = requests.get(add_schema(url)).text
+        #TODO Purge won't work
+        page = requests.get(url).text
         self.add_page(url, page)
       except:
         print('FATAL ERROR: Could not get page %s.' % url, file=sys.stderr)
@@ -77,19 +106,27 @@ class Tropes(object):
       page = self.get_shoutout_page(url)
       soup = BeautifulSoup(page)
       soup = soup.find("div", {"id": "wikitext"})
-    elif self.get_multitropes(url):
-      #Haven't found an example yet.
-      pass
+      if soup == None:
+      #  print(page)
+        print(url)
+        soup = BeautifulSoup("")
     else:
-      #An example is MontyPythonsFlyingCircus.
-      page = self.get_page(url)
+      page = self.get_multitropes(url)
+      if page:
+        #Example is DragonBallZ.
+        print("multipage " + url)
+      else:
+        #An example is MontyPythonsFlyingCircus.
+        page = self.get_page(url)
       soup = BeautifulSoup(page)
       items = [item for item in soup.findAll('li') if '/Main/ShoutOut' in str(item)]
-      soup = min(items, key=lambda x: str(x).index('/Main/ShoutOut'))
+      try:
+        soup = min(items, key=lambda x: str(x).index('/Main/ShoutOut'))
+      except ValueError:
+        soup = BeautifulSoup("")
     links = [link.get('href') for link in soup.find_all('a')]
     links = [link for link in links if link and self.is_trope(link)]
     links = [link for link in links if link and filters.is_work(link)]
-    #print(links)
     return links
 
   def get_shoutout_page(self, url):
@@ -101,7 +138,7 @@ class Tropes(object):
     shoutoutpage = "/ShoutOut/" + url.split('/')[-1]
     links = [link for link in links if shoutoutpage in link]
     if len(links):
-      return self.get_page(add_schema(self.top_url + links[0]))
+      return self.get_page(self.top_url + links[0]))
     else:
       return ""
 
@@ -123,12 +160,14 @@ class Tropes(object):
     return self.c.fetchall()
 
   def make_db(self):
-    self.c.execute('''CREATE TABLE IF NOT EXISTS pagecache (url VARCHAR(20),
+    self.c.execute('''CREATE TABLE IF NOT EXISTS pagecache (url VARCHAR(20) PRIMARY KEY,
       contents VARCHAR(30))''')
     self.sql.commit()
 
 if __name__ == '__main__':
-  with Tropes() as tropes:
-    tropes.get_shoutouts(
-      'http://tvtropes.org/pmwiki/pmwiki.php/Series/MontyPythonsFlyingCircus')
+  with Tropes(False) as tropes:
+    works = tropes.list_pages()
+    for work in works:
+      if filters.is_work(work):
+        tropes.get_shoutouts(work)
     print("DONE")

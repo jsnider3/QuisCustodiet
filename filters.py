@@ -18,7 +18,6 @@ def get_category(url):
     url = url[:url.index('/')]
     return url.lower().strip().strip('.')
 
-
 def is_work(url):
   cat = get_category(url)
   return cat in cats
