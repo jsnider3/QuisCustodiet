@@ -54,6 +54,16 @@ class Tropes(object):
         except:
           print('FATAL ERROR: Could not get page %s.' % url, file=sys.stderr)
 
+  def count_references(self, url):
+    self.c.execute('SELECT count(page_to) FROM edges where page_from=?', (url,))
+    [(cnt,)] = self.c.fetchall()
+    return cnt
+
+  def count_referrers(self, url):
+    self.c.execute('SELECT count(page_from) FROM edges where page_to=?', (url,))
+    [(cnt,)] = self.c.fetchall()
+    return cnt
+
   def delete_page(self, url):
     self.c.execute("DELETE FROM pagecache WHERE url=?", (url,))
     self.sql.commit()
@@ -198,18 +208,20 @@ class Tropes(object):
     rankdict = tropes.pagerank(tropes.list_edges())
     ranked = [(rankdict[k], k) for k in rankdict]
     ranked.sort()
+    ranked = [(k, v) for (k, v) in ranked if (self.count_referrers(k) * 2 > 
+      self.count_references(k))]
     for (k, v) in ranked:
       urlsplit = v.split('/')
       print(k, urlsplit[-2], urlsplit[-1])
     #Then I did some manual cleaning of the data.
 
   def list_references(self, url):
-    edges = self.list_edges()
-    return [v for (k,v) in edges if url == k]
+    self.c.execute('SELECT page_to FROM edges where page_from=?', (url,))
+    return self.c.fetchall()
 
   def list_referrers(self, url):
-    edges = self.list_edges()
-    return [k for (k, v) in edges if url == v]
+    self.c.execute('SELECT page_from FROM edges where page_to=?', (url,))
+    return self.c.fetchall()
 
   def save_shoutouts(self, work, shoutouts):
     for ref in shoutouts:
@@ -219,7 +231,12 @@ class Tropes(object):
 
 if __name__ == '__main__':
   with Tropes(False) as tropes:
-    for ref in tropes.list_references(
-        'http://tvtropes.org/pmwiki/pmwiki.php/Webcomic/DarthsAndDroids'):
-      print(ref)
+    rankdict = tropes.pagerank(tropes.list_edges())
+    ranked = [(rankdict[k], k) for k in rankdict]
+    ranked.sort()
+    ranked = ((k, v) for (k, v) in ranked if (tropes.count_referrers(v) * 2 > 
+      tropes.count_references(v)))
+    for (k, v) in ranked:
+      urlsplit = v.split('/')
+      print(k, urlsplit[-2], urlsplit[-1])
     print("DONE")
