@@ -5,6 +5,7 @@
 
 from bs4 import BeautifulSoup
 import filters
+import pdb
 import re
 import requests
 import sqlite3
@@ -34,6 +35,7 @@ class Tropes(object):
     self.sql.close()
 
   def add_page(self, url, page):
+    #TODO Purge won't work
     self.c.execute("INSERT INTO pagecache VALUES (?, ?)", (url, page))
     self.sql.commit()
 
@@ -51,6 +53,10 @@ class Tropes(object):
         except:
           print('FATAL ERROR: Could not get page %s.' % url, file=sys.stderr)
 
+  def delete_page(self, url):
+    self.c.execute("DELETE FROM pagecache WHERE url=?", (url,))
+    self.sql.commit()
+
   def duplicate(self, dest):
     '''Copy this database to a new location,
        used if constraints were changed.'''
@@ -66,24 +72,25 @@ class Tropes(object):
           pass
 
   def get_multitropes(self, url):
+    #DragonBallZ is an example.
     page = self.get_page(url)
     soup = BeautifulSoup(page)
     links = [link.get('href') for link in soup.find_all('a')]
     links = [link for link in links if link]
     pattern = re.compile('.*/Tropes[A-Z]To[A-Z].*')
-    items = [link for link in links if pattern.match(str(link))]
-    if items:
-      #TODO Get the one with S.
-      print(items)
-      return self.get_page(items[0])
-    else:
-      return ""
+    links = [str(link) for link in links if pattern.match(str(link))]
+    pattern = re.compile('Tropes([A-Z])To([A-Z])')
+    for link in links:
+      mat = pattern.search(link)
+      if mat.group(1) <= 'S' and 'S' <= mat.group(2):
+        return self.get_page(link)
+    return ""
 
   def get_page(self, url):
     '''Look up the url in the database.
        Fetch and cache it if it's not present.'''
-    if top_url not in url:
-      url = top_url + url
+    if self.top_url not in url:
+      url = self.top_url + url
     url = add_schema(url)
     self.c.execute('SELECT contents FROM pagecache WHERE url = ?', (url,))
     results = self.c.fetchall()
@@ -93,7 +100,6 @@ class Tropes(object):
       page = results[0][0]
     else:
       try:
-        #TODO Purge won't work
         page = requests.get(url).text
         self.add_page(url, page)
       except:
@@ -101,32 +107,35 @@ class Tropes(object):
     return page
 
   def get_shoutouts(self, url):
+    '''Get a list of pages that the given work has "shoutouts" to.'''
     if self.get_shoutout_page(url):
       #An example is Warhammer40000.
       page = self.get_shoutout_page(url)
       soup = BeautifulSoup(page)
       soup = soup.find("div", {"id": "wikitext"})
       if soup == None:
-      #  print(page)
-        print(url)
-        soup = BeautifulSoup("")
+        print("INVALID PAGE:" + url, file=sys.stderr)
+        print(page)
+        shoutouturl = add_schema(self.base_url + "ShoutOut/"
+          + url.split('/')[-1])
+        print("delete " + shoutouturl)
+        self.delete_page(shoutouturl)
+        return self.get_shoutouts(url)
     else:
       page = self.get_multitropes(url)
-      if page:
-        #Example is DragonBallZ.
-        print("multipage " + url)
-      else:
+      if not page:
         #An example is MontyPythonsFlyingCircus.
         page = self.get_page(url)
       soup = BeautifulSoup(page)
-      items = [item for item in soup.findAll('li') if '/Main/ShoutOut' in str(item)]
+      items = [item for item in soup.findAll('li') if
+        '/Main/ShoutOut' in str(item)]
       try:
         soup = min(items, key=lambda x: str(x).index('/Main/ShoutOut'))
       except ValueError:
         soup = BeautifulSoup("")
     links = [link.get('href') for link in soup.find_all('a')]
-    links = [link for link in links if link and self.is_trope(link)]
-    links = [link for link in links if link and filters.is_work(link)]
+    links = [link for link in links if link and self.is_trope(link)
+      and filters.is_work(link)]
     return links
 
   def get_shoutout_page(self, url):
@@ -138,15 +147,19 @@ class Tropes(object):
     shoutoutpage = "/ShoutOut/" + url.split('/')[-1]
     links = [link for link in links if shoutoutpage in link]
     if len(links):
-      return self.get_page(self.top_url + links[0]))
+      return self.get_page(self.base_url + shoutoutpage)
     else:
       return ""
 
   def is_trope(self, url):
-    return  self.base_url in url
+    return self.base_url in url
 
   def list_contents(self):
     self.c.execute('SELECT * FROM pagecache')
+    return self.c.fetchall()
+
+  def list_edges(self):
+    self.c.execute('SELECT * FROM edges')
     return self.c.fetchall()
 
   def list_pages(self):
@@ -162,12 +175,30 @@ class Tropes(object):
   def make_db(self):
     self.c.execute('''CREATE TABLE IF NOT EXISTS pagecache (url VARCHAR(20) PRIMARY KEY,
       contents VARCHAR(30))''')
+    self.c.execute('''CREATE TABLE IF NOT EXISTS edges (page_from VARCHAR(20),
+      page_to VARCHAR(30))''')
     self.sql.commit()
+
+  def replicate(self):
+    '''The steps to fully replicate my work.'''
+    #Run crawler.
+    self.make_db()
+    self.cache_pages('filteredworks.txt')
+    works = self.list_pages()
+    for work in works:
+      if filters.is_work(work):
+        shoutouts = tropes.get_shoutouts(work)
+        tropes.save_shoutouts(work, shoutouts)
+    #Do Page Rank.
+
+  def save_shoutouts(self, work, shoutouts):
+    for ref in shoutouts:
+      print(work, "->", ref)
+      self.c.execute("INSERT INTO edges VALUES (?, ?)", (work, ref))
+      self.sql.commit()
 
 if __name__ == '__main__':
   with Tropes(False) as tropes:
-    works = tropes.list_pages()
-    for work in works:
-      if filters.is_work(work):
-        tropes.get_shoutouts(work)
+    for edge in tropes.list_tables():
+      print(edge)
     print("DONE")

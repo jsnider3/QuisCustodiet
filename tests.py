@@ -4,9 +4,8 @@
 '''
 
 import filters
+import pdb
 import tropes
-import unittest
-
 import unittest
 
 class TestTropes(unittest.TestCase):
@@ -20,6 +19,13 @@ class TestTropes(unittest.TestCase):
         in shoutouts)
       assert('http://tvtropes.org/pmwiki/pmwiki.php/Literature/TheLordOfTheRings'
         in shoutouts)
+
+  def test_multitrope_shoutouts(self):
+    with tropes.Tropes(False) as datab:
+      pdb.set_trace()
+      shoutouts = datab.get_shoutouts(
+        'http://tvtropes.org/pmwiki/pmwiki.php/Anime/DragonBallZ')
+      assert(len(shoutouts) == 0)
 
   def test_single_shoutouts(self):
     with tropes.Tropes(False) as datab:
