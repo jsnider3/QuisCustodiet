@@ -197,7 +197,8 @@ class Tropes(object):
 
   def replicate(self):
     '''The steps to fully replicate my work.'''
-    #Run crawler to make filteredworks.txt.
+    #Run scrapy runspider crawler.py
+    #Filter out pages that aren't works or that redirect.
     self.make_db()
     self.cache_pages('filteredworks.txt')
     works = self.list_pages()
@@ -210,10 +211,19 @@ class Tropes(object):
     ranked.sort()
     ranked = [(k, v) for (k, v) in ranked if (self.count_referrers(k) * 2 > 
       self.count_references(k))]
+    ranked = list(reversed(ranked))
+    ind = 1
+    print("[")
     for (k, v) in ranked:
       urlsplit = v.split('/')
-      print(k, urlsplit[-2], urlsplit[-1])
-    #Then I did some manual cleaning of the data.
+      if (k,v) != ranked[-1]:
+        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
+          "; name:", urlsplit[-1], "},")
+      else:
+        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
+          "; name:", urlsplit[-1], "}")
+      ind += 1
+    print("]")
 
   def list_references(self, url):
     self.c.execute('SELECT page_to FROM edges where page_from=?', (url,))
@@ -234,9 +244,18 @@ if __name__ == '__main__':
     rankdict = tropes.pagerank(tropes.list_edges())
     ranked = [(rankdict[k], k) for k in rankdict]
     ranked.sort()
-    ranked = ((k, v) for (k, v) in ranked if (tropes.count_referrers(v) * 2 > 
-      tropes.count_references(v)))
+    ranked = [(k, v) for (k, v) in ranked if (tropes.count_referrers(v) * 2 > 
+      tropes.count_references(v))]
+    ranked = list(reversed(ranked))
+    ind = 1
+    print("[")
     for (k, v) in ranked:
       urlsplit = v.split('/')
-      print(k, urlsplit[-2], urlsplit[-1])
-    print("DONE")
+      if (k,v) != ranked[-1]:
+        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
+          "; name:", urlsplit[-1], "},")
+      else:
+        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
+          "; name:", urlsplit[-1], "}")
+      ind += 1
+    print("]")
