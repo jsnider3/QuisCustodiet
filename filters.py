@@ -22,7 +22,7 @@ def is_work(url):
   cat = get_category(url)
   return cat in cats
 
-def redirects(host, path="/"):
+def redirects(host, path):
   try:
     con = httplib.HTTPConnection(host)
     con.request("HEAD", path)
@@ -31,12 +31,6 @@ def redirects(host, path="/"):
   except:
     return False
 
-assert(not redirects("tvtropes.org"))
-assert(not redirects("tvtropes.org", "/asdfsadf"))
-assert(not redirects("tvtropes.org",
-  "/pmwiki/pmwiki.php/WesternAnimation/SamuraiJack"))
-assert(redirects("tvtropes.org", "/pmwiki/pmwiki.php/Main/SamuraiJack"))
-assert(redirects("tvtropes.org", "/pmwiki/pmwiki.php/Main/MurderOne"))
 
 def setup():
   with open('cats.txt') as catsfile:
@@ -45,6 +39,12 @@ def setup():
     cats = [cat.strip() for cat in cats]
 
 def main():
+  assert(not redirects("tvtropes.org", "/"))
+  assert(not redirects("tvtropes.org", "/asdfsadf"))
+  assert(not redirects("tvtropes.org",
+    "/pmwiki/pmwiki.php/WesternAnimation/SamuraiJack"))
+  assert(redirects("tvtropes.org", "/pmwiki/pmwiki.php/Main/SamuraiJack"))
+  assert(redirects("tvtropes.org", "/pmwiki/pmwiki.php/Main/MurderOne"))
   with open('works.txt') as f:
     pages = f.readlines()
     pages = [page.strip() for page in pages]
