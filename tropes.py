@@ -195,6 +195,21 @@ class Tropes(object):
        and calculate the pagerank of the nodes.'''
     return nx.pagerank(nx.from_edgelist(edges))
 
+  def print_results(self, ranked):
+    ind = 1
+    print("[")
+    for (k, v) in ranked:
+      urlsplit = v.split('/')
+      if "?" not in urlsplit[-1] and "?" not in urlsplit[-2]:
+        if (k,v) != ranked[-1]:
+          print("{ ind:", ind, ", pr:", k,
+            ", cat: '" + urlsplit[-2] + "', name: '" + urlsplit[-1] + "'},")
+        else:
+          print("{ ind:", ind, ", pr:", k,
+            ", cat: '" + urlsplit[-2] + "', name: '" + urlsplit[-1] + "'}")
+        ind += 1
+    print("]")
+
   def replicate(self):
     '''The steps to fully replicate my work.'''
     #Run scrapy runspider crawler.py
@@ -212,18 +227,7 @@ class Tropes(object):
     ranked = [(k, v) for (k, v) in ranked if (self.count_referrers(k) * 2 > 
       self.count_references(k))]
     ranked = list(reversed(ranked))
-    ind = 1
-    print("[")
-    for (k, v) in ranked:
-      urlsplit = v.split('/')
-      if (k,v) != ranked[-1]:
-        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
-          "; name:", urlsplit[-1], "},")
-      else:
-        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
-          "; name:", urlsplit[-1], "}")
-      ind += 1
-    print("]")
+    self.print_results(ranked)
 
   def list_references(self, url):
     self.c.execute('SELECT page_to FROM edges where page_from=?', (url,))
@@ -247,15 +251,5 @@ if __name__ == '__main__':
     ranked = [(k, v) for (k, v) in ranked if (tropes.count_referrers(v) * 2 > 
       tropes.count_references(v))]
     ranked = list(reversed(ranked))
-    ind = 1
-    print("[")
-    for (k, v) in ranked:
-      urlsplit = v.split('/')
-      if (k,v) != ranked[-1]:
-        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
-          "; name:", urlsplit[-1], "},")
-      else:
-        print("{ ind:", ind, "; pr:", k,"; cat:", urlsplit[-2],
-          "; name:", urlsplit[-1], "}")
-      ind += 1
-    print("]")
+    tropes.print_results(ranked)
+
