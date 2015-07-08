@@ -1,0 +1,11 @@
+# Site settings
+title: (\x -> "Blog")
+email: jsnider3@masonlive.gmu.edu
+description: "An attempt at a blog by someone who thinks Haskell is cool."
+baseurl: ""
+url: "http://www.joshuasnider.com"
+username: "jsnider3"
+
+# Build settings
+markdown: kramdown
+permalink: pretty
