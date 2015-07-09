@@ -5,6 +5,7 @@
 
 from bs4 import BeautifulSoup
 import filters
+import json
 import networkx as nx
 import pdb
 import re
@@ -81,6 +82,11 @@ class Tropes(object):
           tropes.add_page(url, contents)
         except:
           pass
+
+  def edges_as_json(self, edges):
+    edges = [(k,v) for (k,v) in edges if '?' not in k and '?' not in v]
+    jsonified = [{'page_from': edge[0], 'page_to': edge[1]} for edge in edges]
+    return json.dumps(jsonified)
 
   def get_multitropes(self, url):
     #DragonBallZ is an example.
@@ -245,11 +251,5 @@ class Tropes(object):
 
 if __name__ == '__main__':
   with Tropes(False) as tropes:
-    rankdict = tropes.pagerank(tropes.list_edges())
-    ranked = [(rankdict[k], k) for k in rankdict]
-    ranked.sort()
-    ranked = [(k, v) for (k, v) in ranked if (tropes.count_referrers(v) * 2 > 
-      tropes.count_references(v))]
-    ranked = list(reversed(ranked))
-    tropes.print_results(ranked)
+    print(tropes.edges_as_json(tropes.list_edges()))
 
